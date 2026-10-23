@@ -33,3 +33,9 @@ backend/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Next.js build output
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts

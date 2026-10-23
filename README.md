@@ -166,11 +166,11 @@ flowchart LR
 
 | Agent | Real-World Role | What It Does | Technologies / Models |
 | :--- | :--- | :--- | :--- |
-| **Agent 1: Intake** | *Junior Paralegal* | Gathers the narrative, optionally transcribes audio, extracts text from PDF/DOCX/TXT uploads, extracts structured facts (dates, parties, amounts), and asks follow-ups when details are missing. | Groq (optional), Sarvam (optional), Pydantic, deterministic local extraction |
-| **Agent 2: Research** | *Legal Research Associate* | Searches the Indian legal corpus and maps BNS sections to legacy IPC sections. | Qdrant + SentenceTransformers (optional), local curated corpus, Neo4j (optional) |
-| **Agent 3: Strategy** | *Senior Advocate* | Scores case merits, selects jurisdiction/forum, checks limitation periods and drafts an action plan. | Groq or Gemini (optional), deterministic rules engine |
-| **Agent 4: Drafting** | *Drafting Counsel* | Produces clearly-labelled **draft** legal notices, consumer complaints, FIR drafts and lawyer briefs. | Groq (optional), `python-docx`, `markdown-pdf`, local templates |
-| **Agent 5: Explain** | *Client Counselor* | Produces citizen and lawyer explanations, confidence notes and a trace of the decision path. | Deterministic explainability layer |
+| **Agent 1: Intake** | *Junior Paralegal* | Gathers narrative from user, transcribes audio, parses uploaded bills/FIRs via OCR, extracts structured JSON facts (dates, parties, disputed amounts), and asks follow-ups if details are missing. | Sarvam AI, Tesseract, Pydantic, Claude / GPT-4o (`temp=0.0`) |
+| **Agent 2: Research** | *Legal Research Associate* | Searches the complete Indian legal corpus (BNS, BNSS, BSA, Consumer Protection Act, etc.). Maps new BNS sections to corresponding legacy IPC sections. | Qdrant Vector DB, Neo4j Graph DB, OpenAI text-embedding-3-large |
+| **Agent 3: Strategy** | *Senior Advocate* | Evaluates case merits (3-factor score), checks statutory limitation periods (deadlines to file), and selects the right jurisdiction / court forum (e.g. District Forum, NCLT, High Court). | LangGraph Conditional Routing, Custom Rules Engine |
+| **Agent 4: Drafting** | *Drafting Counsel* | Takes the facts, citations, and strategy and writes structured, court-admissible legal documents (Legal Notices, Consumer Petitions, RTI requests). | `python-docx`, `reportlab` (PDF), Jinja2 templates |
+| **Agent 5: Explain** | *Client Counselor* | Generates a 2-version explanation: **Citizen mode** (simple, jargon-free Hindi/English summary with action points) and **Lawyer mode** (technical citations, precedents, legal standing). | Claude 3.5 Haiku / GPT-4o-mini |
 
 ---
 
@@ -421,30 +421,21 @@ Below are the primary REST endpoints exposed by the FastAPI backend (`http://loc
 
 # 6. ❓ Troubleshooting & Common Gotchas
 
-The main troubleshooting table is in [section 3.7](#37-common-problems). A few
-additional notes:
+### 1. `Docker failed to start or ports already in use`
+- **Cause:** Another instance of PostgreSQL (`5432`) or Redis (`6379`) is already running on your machine.
+- **Fix:** Stop your local PostgreSQL/Redis service, or edit `docker-compose.yml` to change the host port (e.g., `"5433:5432"`).
 
-### Docker is not required
-The local demo does not need PostgreSQL, Redis, Qdrant or Neo4j. Docker Compose
-is only for testing the optional production integrations.
+### 2. `TesseractNotFoundError`
+- **Cause:** Tesseract OCR is not installed or not present in your system's PATH.
+- **Fix:** If on Windows, add `C:\Program Files\Tesseract-OCR` to your Environment Variables, or specify `TESSERACT_CMD` in your `.env`.
 
-### CORS errors
-Set the frontend origin explicitly in `.env` and restart the backend:
+### 3. `ModuleNotFoundError: No module named 'agents'`
+- **Cause:** Python path was not set when executing directly.
+- **Fix:** Always run from the `backend` folder using `uvicorn main:app --reload` (which has path auto-resolution configured).
 
-```env
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-```
-
-### Tesseract / image OCR
-Image OCR is optional. Install Tesseract and add it to `PATH`, or set
-`SARVAM_API_KEY` to use Sarvam document intelligence. Text, PDF and DOCX
-uploads work without either.
-
-### Empty cloud dashboard
-If login works but `/citizen/cases` or the marketplace is empty, the Supabase
-project is missing the expected tables or RLS policies. Use local demo mode, or
-apply your project's schema/migrations before setting
-`NEXT_PUBLIC_DEMO_MODE=false`.
+### 4. `CORS Error in Browser Console`
+- **Cause:** Frontend (`localhost:3000`) is blocked from calling the backend.
+- **Fix:** Ensure backend `main.py` has `CORSMiddleware` configured (default allows `*` in development).
 
 ---
 
