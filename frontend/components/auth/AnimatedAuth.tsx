@@ -1,0 +1,618 @@
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { User, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+import { useTheme } from '../themeprovider';
+
+gsap.registerPlugin(useGSAP);
+
+export interface AnimatedAuthProps {
+  themeColor?: string;
+  themeColorDark?: string;
+  glowColor?: string;
+  glowColorDark?: string;
+  backgroundColor?: string;
+  backgroundColorDark?: string;
+  backdrop?: string;
+  backdropDark?: string;
+  placeholderColor?: string;
+  placeholderColorDark?: string;
+  textColor?: string;
+  textColorDark?: string;
+  secondaryTextColor?: string;
+  secondaryTextColorDark?: string;
+  borderColor?: string;
+  borderColorDark?: string;
+  transitionTintColor?: string;
+  transitionTintColorDark?: string;
+  leftPanelTitle?: string;
+  leftPanelSubtitle?: string;
+  rightPanelTitle?: string;
+  rightPanelSubtitle?: string;
+  leftPanelTitleColor?: string;
+  leftPanelSubtitleColor?: string;
+  rightPanelTitleColor?: string;
+  rightPanelSubtitleColor?: string;
+  loginTitle?: string;
+  signupTitle?: string;
+  leftPanelImage?: string;
+  rightPanelImage?: string;
+}
+
+// ✅ 'admin' removed — cannot be self-assigned via signup
+const roles = ['citizen', 'lawyer'] as const;
+type Role = (typeof roles)[number];
+
+export const ANIMATED_AUTH_TRANSITION_TINT_COLOR = '#cdaa80';
+
+export const AUTH_COLORS_LIGHT = {
+  themeColor: '#997953',
+  glowColor: 'rgba(68,56,49,0.20)',
+  backgroundColor: '#f5f0e8',
+  backdrop: '#efe6d8',
+  placeholderColor: 'rgba(68,56,49,0.70)',
+  textColor: '#443831',
+  secondaryTextColor: '#6f6255',
+  borderColor: '#d8c1a1',
+  transitionTintColor: '#dcc4a3',
+  themeColorDark: '#cdaa80',
+  glowColorDark: 'rgba(8,18,40,0.42)',
+  backgroundColorDark: '#0f1e3f',
+  backdropDark: '#0a152e',
+  placeholderColorDark: 'rgba(232,226,214,0.85)',
+  textColorDark: '#e8e2d6',
+  secondaryTextColorDark: '#c6b49d',
+  borderColorDark: '#2b4b6b',
+  transitionTintColorDark: '#213a56',
+};
+
+export const AUTH_COLORS_DARK = {
+  themeColor: '#cdaa80',
+  glowColor: 'rgba(8,18,40,0.42)',
+  backgroundColor: '#0f1e3f',
+  backdrop: '#0a152e',
+  placeholderColor: 'rgba(232,226,214,0.85)',
+  textColor: '#e8e2d6',
+  secondaryTextColor: '#c6b49d',
+  borderColor: '#2b4b6b',
+  transitionTintColor: '#213a56',
+  themeColorDark: '#cdaa80',
+  glowColorDark: 'rgba(8,18,40,0.42)',
+  backgroundColorDark: '#0f1e3f',
+  backdropDark: '#0a152e',
+  placeholderColorDark: 'rgba(232,226,214,0.85)',
+  textColorDark: '#e8e2d6',
+  secondaryTextColorDark: '#c6b49d',
+  borderColorDark: '#2b4b6b',
+  transitionTintColorDark: '#213a56',
+};
+
+export default function AnimatedAuth({
+  themeColor = AUTH_COLORS_LIGHT.themeColor,
+  themeColorDark = AUTH_COLORS_DARK.themeColor,
+  glowColor = AUTH_COLORS_LIGHT.glowColor,
+  glowColorDark = AUTH_COLORS_DARK.glowColor,
+  backgroundColor = AUTH_COLORS_LIGHT.backgroundColor,
+  backgroundColorDark = AUTH_COLORS_DARK.backgroundColor,
+  backdrop = AUTH_COLORS_LIGHT.backdrop,
+  backdropDark = AUTH_COLORS_DARK.backdrop,
+  placeholderColor = AUTH_COLORS_LIGHT.placeholderColor,
+  placeholderColorDark = AUTH_COLORS_DARK.placeholderColor,
+  textColor = AUTH_COLORS_LIGHT.textColor,
+  textColorDark = AUTH_COLORS_DARK.textColor,
+  secondaryTextColor = AUTH_COLORS_LIGHT.secondaryTextColor,
+  secondaryTextColorDark = AUTH_COLORS_DARK.secondaryTextColor,
+  borderColor = AUTH_COLORS_LIGHT.borderColor,
+  borderColorDark = AUTH_COLORS_DARK.borderColor,
+  transitionTintColor = AUTH_COLORS_LIGHT.transitionTintColor,
+  transitionTintColorDark = AUTH_COLORS_DARK.transitionTintColor,
+  leftPanelTitle = 'WELCOME BACK!',
+  leftPanelSubtitle = 'Lorem ipsum dolor sit amet consectetur adipisicing.',
+  rightPanelTitle = 'HELLO FRIEND!',
+  rightPanelSubtitle = 'Enter your personal details and start your journey with us.',
+  leftPanelTitleColor = '#ffffff',
+  leftPanelSubtitleColor = 'rgb(209 213 219)',
+  rightPanelTitleColor = '#ffffff',
+  rightPanelSubtitleColor = 'rgb(209 213 219)',
+  loginTitle = 'Login',
+  signupTitle = 'Sign Up',
+  leftPanelImage = '/Authsideimage.jpeg',
+  rightPanelImage = '/Authsideimage.jpeg',
+}: AnimatedAuthProps) {
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    if (window.location.hash.includes('access_token')) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const [isLogin, setIsLogin] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [signupRole, setSignupRole] = useState<Role>('citizen');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const overlayTintRef = useRef<HTMLDivElement>(null);
+  const leftBgRef = useRef<HTMLDivElement>(null);
+  const rightBgRef = useRef<HTMLDivElement>(null);
+  const overlayLeftTextRef = useRef<HTMLDivElement>(null);
+  const overlayRightTextRef = useRef<HTMLDivElement>(null);
+  const loginFormRef = useRef<HTMLDivElement>(null);
+  const signupFormRef = useRef<HTMLDivElement>(null);
+
+  const isDark = theme === 'dark';
+  const activeThemeColor = isDark ? themeColorDark : themeColor;
+  const activeGlowColor = isDark ? glowColorDark : glowColor;
+  const activeBackgroundColor = isDark ? backgroundColorDark : backgroundColor;
+  const activeBackdrop = isDark ? backdropDark : backdrop;
+  const activePlaceholderColor = isDark ? placeholderColorDark : placeholderColor;
+  const activeTextColor = isDark ? textColorDark : textColor;
+  const activeSecondaryTextColor = isDark ? secondaryTextColorDark : secondaryTextColor;
+  const activeBorderColor = isDark ? borderColorDark : borderColor;
+  const activeTransitionTintColor = isDark ? transitionTintColorDark : transitionTintColor;
+
+  useGSAP(() => {
+    gsap.fromTo(
+      containerRef.current,
+      { autoAlpha: 0, y: 40, scale: 0.98 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.8, ease: 'power3.out' }
+    );
+  }, { scope: containerRef });
+
+  useGSAP(() => {
+    const tl = gsap.timeline({ defaults: { ease: 'power3.inOut', duration: 0.8 } });
+
+    if (isLogin) {
+      tl.to(overlayTintRef.current, { autoAlpha: 1, duration: 0.25, ease: 'power1.out' }, 0)
+        .to(overlayRef.current, { left: '45%', clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }, 0)
+        .to(overlayTintRef.current, { autoAlpha: 0, duration: 0.35, ease: 'power1.in' }, 0.55)
+        .to(overlayLeftTextRef.current, { autoAlpha: 0, x: -50 }, 0)
+        .to(overlayRightTextRef.current, { autoAlpha: 1, x: 0 }, 0.2)
+        .to(leftBgRef.current, { autoAlpha: 0 }, 0)
+        .to(rightBgRef.current, { autoAlpha: 1 }, 0)
+        .to(signupFormRef.current, { autoAlpha: 0, x: 50 }, 0)
+        .to(loginFormRef.current, { autoAlpha: 1, x: 0 }, 0.2);
+    } else {
+      tl.to(overlayTintRef.current, { autoAlpha: 1, duration: 0.25, ease: 'power1.out' }, 0)
+        .to(overlayRef.current, { left: '0%', clipPath: 'polygon(0% 0%, 100% 0%, 80% 100%, 0% 100%)' }, 0)
+        .to(overlayTintRef.current, { autoAlpha: 0, duration: 0.35, ease: 'power1.in' }, 0.55)
+        .to(overlayRightTextRef.current, { autoAlpha: 0, x: 50 }, 0)
+        .to(overlayLeftTextRef.current, { autoAlpha: 1, x: 0 }, 0.2)
+        .to(rightBgRef.current, { autoAlpha: 0 }, 0)
+        .to(leftBgRef.current, { autoAlpha: 1 }, 0)
+        .to(loginFormRef.current, { autoAlpha: 0, x: -50 }, 0)
+        .to(signupFormRef.current, { autoAlpha: 1, x: 0 }, 0.2);
+    }
+  }, { dependencies: [isLogin], scope: containerRef });
+
+  const handleSignup = async () => {
+    if (!signupEmail || !signupPassword) {
+      setError('Email and password are required.');
+      return;
+    }
+
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email: signupEmail.trim(),
+      password: signupPassword,
+      options: {
+        data: {
+          role: signupRole,
+          full_name: signupName.trim() || null,
+        },
+      },
+    });
+
+    setLoading(false);
+
+    if (signupError) {
+      setError(signupError.message);
+      return;
+    }
+
+    // Supabase returns identities=[] when email already exists
+    if (data.user && data.user.identities?.length === 0) {
+      setError('An account with this email already exists. Please login.');
+      return;
+    }
+
+    // Email confirmation ON → no session yet
+    if (!data.session) {
+      setMessage('Account created! Check your email to confirm, then login.');
+      setIsLogin(true);
+      return;
+    }
+
+    // Email confirmation OFF → redirect immediately
+    const userRole = data.user?.user_metadata?.role ?? 'citizen';
+    if (userRole === 'lawyer') {
+      router.push('/lawyerside/home');
+    } else {
+      router.push('/citizen/home');
+    }
+  };
+
+  const handleLogin = async () => {
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPassword,
+    });
+
+    if (loginError) {
+      if (loginError.message.toLowerCase().includes('email not confirmed')) {
+        setError('Please confirm your email before logging in. Check your inbox.');
+      } else {
+        setError(loginError.message);
+      }
+      setLoading(false);
+      return;
+    }
+
+    const userId = data.user?.id;
+    if (!userId) {
+      setError('Login failed. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (roleError || !roleData) {
+      setError('Could not verify role. Please try again.');
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+
+    if (roleData.role === 'lawyer') {
+      router.push('/lawyerside/home');
+    } else if (roleData.role === 'admin') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/citizen/home');
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setMessage('');
+    setLoading(true);
+
+    const { error: googleError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback${!isLogin ? `?role=${signupRole}` : ''}`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (googleError) {
+      setError(googleError.message);
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!loginEmail.trim()) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      loginEmail.trim(),
+      { redirectTo: `${window.location.origin}/auth/callback` }
+    );
+
+    setLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+    } else {
+      setMessage('Password reset link sent! Check your email.');
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen p-4 bg-cover bg-center"
+      style={{ background: activeBackdrop }}
+    >
+      <div
+        ref={containerRef}
+        className="relative w-full max-w-4xl h-[600px] md:h-[500px] rounded-xl overflow-hidden flex"
+        style={{
+          backgroundColor: activeBackgroundColor,
+          boxShadow: `0 0 20px ${activeGlowColor}, inset 0 0 0 1px ${activeThemeColor}40`,
+          '--auth-placeholder': activePlaceholderColor,
+          '--auth-text': activeTextColor,
+          '--auth-text-secondary': activeSecondaryTextColor,
+          '--auth-border': activeBorderColor,
+        } as React.CSSProperties}
+      >
+        {(error || message) && (
+          <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 px-4 py-2 text-sm rounded-lg border border-white/20 bg-black/70 text-white whitespace-nowrap">
+            {error || message}
+          </div>
+        )}
+
+        {/* === LOGIN FORM (Left Side) === */}
+        <div
+          ref={loginFormRef}
+          className="absolute left-0 top-0 w-full md:w-1/2 h-full flex flex-col justify-center px-8 md:px-12 opacity-0 -translate-x-12 pointer-events-auto z-10"
+        >
+          <h2 className="text-3xl font-bold text-[var(--auth-text)] mb-8">{loginTitle}</h2>
+          <div className="space-y-4">
+            <div className="relative border-b border-[var(--auth-border)] pb-2">
+              <input
+                type="email"
+                placeholder="Email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full bg-transparent outline-none text-[var(--auth-text)] text-sm placeholder-[var(--auth-placeholder)]"
+              />
+              <span className="absolute right-0 text-[var(--auth-text-secondary)]">
+                <Mail size={16} />
+              </span>
+            </div>
+            <div className="relative border-b border-[var(--auth-border)] pb-2">
+              <input
+                type={showLoginPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full bg-transparent outline-none text-[var(--auth-text)] text-sm placeholder-[var(--auth-placeholder)]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowLoginPassword((prev) => !prev)}
+                className="absolute right-0 text-xs text-[var(--auth-text-secondary)] hover:text-[var(--auth-text)]"
+              >
+                {showLoginPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <div className="flex justify-end mt-1">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="relative text-xs transition-colors"
+                style={{ color: activeThemeColor }}
+                onMouseEnter={(e) => {
+                  const underline = e.currentTarget.querySelector('.forgot-underline');
+                  if (underline) gsap.to(underline, { scaleX: 1, duration: 0.3, ease: 'power2.out' });
+                }}
+                onMouseLeave={(e) => {
+                  const underline = e.currentTarget.querySelector('.forgot-underline');
+                  if (underline) gsap.to(underline, { scaleX: 0, duration: 0.3, ease: 'power2.in' });
+                }}
+              >
+                Forgot Password?
+                <span
+                  className="forgot-underline absolute left-0 bottom-0 w-full h-[1px] origin-left"
+                  style={{ backgroundColor: activeThemeColor, transform: 'scaleX(0)' }}
+                />
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full mt-6 py-3 rounded-full text-white font-semibold transition-transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ backgroundColor: activeThemeColor }}
+          >
+            {loading ? 'Please wait...' : loginTitle}
+          </button>
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            className="w-full mt-3 py-3 rounded-full text-[var(--auth-text)] text-sm font-semibold border bg-transparent transition-transform transition-colors hover:scale-105 hover:bg-white/10 flex items-center justify-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ borderColor: activeThemeColor }}
+          >
+            {loading ? (
+              'Please wait...'
+            ) : (
+              <>
+                <img
+                  src="/google_icon.svg"
+                  alt="Google logo"
+                  className="h-5 w-5"
+                />
+                <span>Login via Google</span>
+              </>
+            )}
+          </button>
+          <p className="text-xs text-[var(--auth-text-secondary)] mt-4 text-center">
+            Don&apos;t have an account?{' '}
+            <button onClick={() => setIsLogin(false)} style={{ color: activeThemeColor }} className="hover:underline">
+              Sign Up
+            </button>
+          </p>
+        </div>
+
+        {/* === SIGN UP FORM (Right Side) === */}
+        <div
+          ref={signupFormRef}
+          className="absolute right-0 top-0 w-full md:w-1/2 h-full flex flex-col justify-start px-8 md:px-12 pointer-events-auto z-10 overflow-y-auto md:overflow-hidden pt-6"
+        >
+          <h2 className="text-2xl font-bold text-[var(--auth-text)] mb-4">{signupTitle}</h2>
+          <div className="space-y-2.5">
+            <div className="relative border-b border-[var(--auth-border)] pb-2">
+              <input
+                type="text"
+                placeholder="Full name"
+                value={signupName}
+                onChange={(e) => setSignupName(e.target.value)}
+                className="w-full bg-transparent outline-none text-[var(--auth-text)] text-xs placeholder-[var(--auth-placeholder)]"
+              />
+              <span className="absolute right-0 text-[var(--auth-text-secondary)]">
+                <User size={16} />
+              </span>
+            </div>
+            <div className="relative border-b border-[var(--auth-border)] pb-2">
+              <input
+                type="email"
+                placeholder="Email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                className="w-full bg-transparent outline-none text-[var(--auth-text)] text-xs placeholder-[var(--auth-placeholder)]"
+              />
+              <span className="absolute right-0 text-[var(--auth-text-secondary)]">
+                <Mail size={16} />
+              </span>
+            </div>
+            <div className="relative border-b border-[var(--auth-border)] pb-2">
+              <input
+                type={showSignupPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                className="w-full bg-transparent outline-none text-[var(--auth-text)] text-xs placeholder-[var(--auth-placeholder)]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSignupPassword((prev) => !prev)}
+                className="absolute right-0 text-xs text-[var(--auth-text-secondary)] hover:text-[var(--auth-text)]"
+              >
+                {showSignupPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <div>
+              <p className="text-[11px] mb-1.5" style={{ color: activePlaceholderColor }}>Role</p>
+              <div className="flex flex-wrap gap-3">
+                {roles.map((role) => (
+                  <label key={role} className="text-[11px] capitalize flex items-center gap-1.5 cursor-pointer" style={{ color: activePlaceholderColor }}>
+                    <input
+                      type="radio"
+                      name="signup-role"
+                      value={role}
+                      checked={signupRole === role}
+                      onChange={() => setSignupRole(role)}
+                    />
+                    {role}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleSignup}
+            disabled={loading}
+            className="w-full mt-4 py-2.5 rounded-full text-white text-sm font-semibold transition-transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ backgroundColor: activeThemeColor }}
+          >
+            {loading ? 'Please wait...' : signupTitle}
+          </button>
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            className="w-full mt-3 py-2.5 rounded-full text-[var(--auth-text)] text-sm font-semibold border bg-transparent transition-transform transition-colors hover:scale-105 hover:bg-white/10 flex items-center justify-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ borderColor: activeThemeColor }}
+          >
+            {loading ? (
+              'Please wait...'
+            ) : (
+              <>
+                <img
+                  src="/google_icon.svg"
+                  alt="Google logo"
+                  className="h-4 w-4"
+                />
+                <span>Signup via Google</span>
+              </>
+            )}
+          </button>
+          <p className="text-[11px] text-[var(--auth-text-secondary)] mt-3 text-center">
+            Already have an account?{' '}
+            <button onClick={() => setIsLogin(true)} style={{ color: activeThemeColor }} className="hover:underline">
+              Login
+            </button>
+          </p>
+        </div>
+
+        {/* === ANIMATED OVERLAY === */}
+        <div
+          ref={overlayRef}
+          className="absolute top-0 h-full w-[55%] z-20 hidden md:flex overflow-hidden shadow-2xl"
+          style={{
+            left: '0%',
+            clipPath: 'polygon(0% 0%, 100% 0%, 80% 100%, 0% 100%)',
+          }}
+        >
+          <div
+            ref={leftBgRef}
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{ backgroundImage: `url('${leftPanelImage}')` }}
+          />
+          <div
+            ref={rightBgRef}
+            className="absolute inset-0 bg-cover bg-center z-0 opacity-0 invisible"
+            style={{ backgroundImage: `url('${rightPanelImage}')` }}
+          />
+          <div
+            ref={overlayTintRef}
+            className="absolute inset-0 opacity-0 z-10"
+            style={{ backgroundColor: activeTransitionTintColor }}
+          />
+          <div
+            ref={overlayLeftTextRef}
+            className="absolute inset-0 z-20 flex flex-col justify-between pt-6 pb-6 items-start px-12 w-[calc(100%/0.55*0.5)]"
+          >
+            <h1 className="text-4xl font-bold leading-tight" style={{ color: leftPanelTitleColor }}>
+              {leftPanelTitle}
+            </h1>
+            <p className="text-sm max-w-[260px] leading-relaxed mt-3" style={{ color: leftPanelSubtitleColor }}>
+              {leftPanelSubtitle}
+            </p>
+          </div>
+          <div
+            ref={overlayRightTextRef}
+            className="absolute right-0 inset-y-0 z-20 flex flex-col justify-between pt-6 pb-6 items-end px-12 w-[calc(100%/0.55*0.5)] text-right opacity-0"
+          >
+            <h1 className="text-4xl font-bold leading-tight" style={{ color: rightPanelTitleColor }}>
+              {rightPanelTitle}
+            </h1>
+            <p className="text-sm max-w-[260px] leading-relaxed mt-3" style={{ color: rightPanelSubtitleColor }}>
+              {rightPanelSubtitle}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

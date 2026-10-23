@@ -1,0 +1,66 @@
+'use client';
+
+import React from 'react';
+import NextLink from 'next/link';
+import { ChatAnalysisCard } from './ChatAnalysisCard';
+import { getBackendUrl } from '@/lib/utils/backendUrl';
+import { toDomainLabel, canonicalizeDomain } from '@/lib/utils/domain';
+
+interface CaseAnalysis {
+  case_id: string;
+  structured_facts?: any;
+  legal_mapping?: any;
+  action_plan?: any;
+  generated_documents?: any;
+  reasoning_trace?: any;
+  agent_trace?: any;
+}
+
+
+interface AnalysisModalProps {
+  analysis: CaseAnalysis;
+  caseTitle: string;
+  caseDomain: string;
+}
+
+export function AnalysisModal({ analysis, caseTitle, caseDomain }: AnalysisModalProps) {
+  const BACKEND_URL = getBackendUrl();
+
+  const metadata = {
+    summary: analysis?.structured_facts?.incident_summary,
+    standing: analysis?.legal_mapping?.legal_standing_score,
+    actionPlan: analysis?.action_plan,
+    legalMapping: analysis?.legal_mapping,
+    generatedDocuments: analysis?.generated_documents,
+    reasoningTrace: analysis?.reasoning_trace,
+    incidentType: analysis?.structured_facts?.incident_type,
+    structuredFacts: analysis?.structured_facts,
+  };
+
+  // Dynamic lawyer button
+  const canonicalDomain = canonicalizeDomain(caseDomain);
+  const domainLabel = toDomainLabel(caseDomain) || 'Law';
+  // For the link, pass ?domain=canonicalDomain if known
+  const lawyerLink = canonicalDomain ? `/citizen/market_place?domain=${encodeURIComponent(canonicalDomain)}` : '/citizen/market_place';
+  const lawyerButtonText = `View ${domainLabel} Lawyers →`;
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+      <ChatAnalysisCard
+        itemId={analysis?.case_id || 'modal-analysis'}
+        metadata={metadata}
+        backendUrl={BACKEND_URL}
+      />
+
+      {/* View Lawyer Button */}
+      <div className="sticky bottom-0 pt-2 border-t border-[#e7d9c7] dark:border-[#cdaa80]/20 bg-white dark:bg-[#0a152e] pb-1">
+        <NextLink
+          href={lawyerLink}
+          className="block w-full text-center px-4 py-3 rounded-lg bg-[#0f1e3f] text-[#cdaa80] font-semibold hover:bg-[#1a3358] transition"
+        >
+          {lawyerButtonText}
+        </NextLink>
+      </div>
+    </div>
+  );
+}

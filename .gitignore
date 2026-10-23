@@ -1,0 +1,35 @@
+# Node
+node_modules/
+dist/
+build/
+
+# Env
+.env
+.env.local
+.env.*
+!.env.example
+!.env.local.example
+!.env_example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env/
+
+# Databases
+*.db
+backend/nyayai_cases.db
+
+# Generated Documents
+backend/output_docs/
+
+# Uploaded evidence (contains user files)
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
