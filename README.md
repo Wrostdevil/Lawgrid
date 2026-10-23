@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # ⚖️ LawGrid
 
@@ -184,170 +184,186 @@ flowchart LR
 
 ---
 
-# 3. 🛠️ How to Implement (Step-by-Step Guide)
+# 3. How to Run LawGrid
 
-Follow this guide to get LawGrid running on your local machine from absolute scratch.
+LawGrid has two supported modes. Start with **Local demo mode** — it needs no API keys,
+no Docker and no Supabase project.
 
-### Prerequisites (What to Install First)
+| Mode | What you need | What works |
+| :--- | :--- | :--- |
+| **Local demo** (recommended first run) | Python + Node.js | Chat intake, local legal research, strategy, DOCX/PDF drafts, saved cases, text/PDF/DOCX uploads |
+| **Full AI mode** | Local demo + `GROQ_API_KEY` | LLM intake, strategy and drafting; Sarvam adds voice + image OCR |
+| **Cloud dashboard mode** | Full AI mode + Supabase project | Login, role routing, cloud case dashboard, lawyer marketplace |
 
-Ensure you have these installed on your computer:
-1. **Git:** [Download Git](https://git-scm.com/downloads)
-2. **Python (v3.11 or newer):** [Download Python](https://www.python.org/downloads/) *(Make sure to check "Add Python to PATH" during installation)*
-3. **Node.js (v18 or v20 LTS):** [Download Node.js](https://nodejs.org/)
-4. **Docker Desktop:** [Download Docker Desktop](https://www.docker.com/products/docker-desktop/) *(Must be installed and running)*
-5. **Tesseract OCR (Optional, for document image reading):**
-   - **Windows:** Download and run the [UB-Mannheim Installer](https://github.com/UB-Mannheim/tesseract/wiki).
-   - **macOS:** `brew install tesseract tesseract-lang`
-   - **Linux (Ubuntu/Debian):** `sudo apt-get install tesseract-ocr tesseract-ocr-hin`
+> The backend always starts. Missing keys switch that individual feature to a
+> deterministic local fallback instead of crashing the server.
 
----
+## 3.1 Prerequisites
 
-### Step 1: Obtain Your API Keys
+1. **Python 3.11+** — check with `python --version`.
+2. **Node.js 20+** — check with `node --version`.
+3. Optional: **Tesseract OCR** for local image text extraction.
+4. Optional: **Docker Desktop** only if you want local Qdrant/Neo4j/Postgres/Redis.
+   None of these are required for the demo.
+5. Optional: a **Supabase** project for login and the marketplace.
 
-You will need the following API keys to enable AI capabilities (free trial tiers work):
+## 3.2 One-time setup
 
-1. **LLM API Key (at least one):**
-   - **OpenAI:** Sign up at [platform.openai.com](https://platform.openai.com/) and create a secret key (`sk-...`).
-   - **Anthropic (Optional but recommended):** Sign up at [console.anthropic.com](https://console.anthropic.com/) and create a key (`sk-ant-...`).
-2. **Sarvam AI (For vernacular Indic voice-to-text):**
-   - Register at [sarvam.ai](https://www.sarvam.ai/) to obtain an API key.
-3. **Supabase (For User Authentication & Cloud Database):**
-   - Create a free project at [supabase.com](https://supabase.com/).
-   - From your project dashboard, go to **Project Settings → API** and copy:
-     - `Project URL`
-     - `anon / public` key
-     - `service_role` secret key
+### Backend
 
----
+Open PowerShell in the repository root:
 
-### Step 2: Clone the Project & Prepare the Environment
+```powershell
+# 1. Create your local config (the defaults work as-is)
+Copy-Item .env_example .env
 
-Open your terminal (PowerShell or Bash) and run:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/LawGrid.git
-
-# 2. Enter the project folder
-cd LawGrid
-
-# 3. Create your local environment configuration file
-cp .env_example .env
-```
-
-Open `.env` in your text editor (VS Code, Notepad, etc.) and fill in your keys:
-
-```env
-# Project Branding
-APP_NAME=LawGrid
-NEXT_PUBLIC_APP_NAME=LawGrid
-
-# AI Keys
-OPENAI_API_KEY=sk-your-openai-api-key-here
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
-SARVAM_API_KEY=your-sarvam-key-here
-
-# Supabase Auth & Database
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-
-# Database Connections (Defaults work with Docker Compose)
-DATABASE_URL=postgresql+asyncpg://nyaya:nyaya123@localhost:5432/nyayaai
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=nyaya123
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-```
-
----
-
-### Step 3: Start Supporting Databases with Docker
-
-With Docker Desktop running on your machine, run:
-
-```bash
-docker compose up -d
-```
-
-This single command starts four containers in the background:
-- **PostgreSQL (`5432`):** Primary database
-- **Redis (`6379`):** Cache & message broker
-- **Qdrant (`6333`):** Vector search engine
-- **Neo4j (`7474` / `7687`):** Knowledge graph database *(Open [http://localhost:7474](http://localhost:7474) to explore the graph visually)*
-
----
-
-### Step 4: Set Up and Run the Python Backend
-
-Open a terminal window in the project root:
-
-```bash
-# 1. Navigate into the backend directory
+# 2. Create and activate a virtual environment
 cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-# 2. Create a Python virtual environment
-python -m venv venv
+# If PowerShell blocks activation, run this once in the current window:
+# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+# Or skip activation and call .\.venv\Scripts\python.exe directly.
 
-# 3. Activate the virtual environment:
-# On Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-# On macOS / Linux:
-source venv/bin/activate
-
-# 4. Install backend dependencies
+# 3. Install dependencies
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-
-# 5. Start the FastAPI backend server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Once running, verify your backend:
-- Open your browser to **[http://localhost:8000/health](http://localhost:8000/health)** → should return `{"status": "ok", "version": "4.0.0"}`
-- Interactive API Docs: **[http://localhost:8000/docs](http://localhost:8000/docs)**
+### Frontend
 
----
+Open a **second** PowerShell window in the repository root:
 
-### Step 5: Set Up and Run the Next.js Frontend
-
-Open a **second** terminal window in the project root:
-
-```bash
-# 1. Navigate into the frontend directory
+```powershell
 cd frontend
-
-# 2. Install all Node.js dependencies
-npm install
-
-# 3. (Optional) Create local frontend environment overrides
-# If your backend runs on port 8000, the default configuration already works!
+Copy-Item .env.local.example .env.local
+npm ci
 ```
 
-Now start the development server:
+`frontend/.env.local.example` already points the frontend at
+`http://localhost:8000` and enables demo mode.
 
-```bash
+## 3.3 Start both servers
+
+**Terminal 1 — backend** (from `backend`):
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Terminal 2 — frontend** (from `frontend`):
+
+```powershell
 npm run dev
 ```
 
-Your frontend is now live at: **[http://localhost:3000](http://localhost:3000)**!
+Then open:
 
----
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend health: [http://localhost:8000/health](http://localhost:8000/health)
+- API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Step 6: Test Your First End-to-End Case
+A correctly configured local demo reports:
 
-1. Open [http://localhost:3000](http://localhost:3000) in your browser.
-2. Click **Start Case Analysis** or visit `/citizen/home`.
-3. Try typing or speaking this sample scenario:
-   > *"I bought a Samsung Smart TV for ₹45,000 from an electronics dealer in Mumbai on 10th January 2024 with a 1-year warranty. After 5 days the display stopped working. The dealer refuses to replace it or give a refund, claiming 'sold goods cannot be returned'. What legal remedy do I have?"*
-4. **Watch the Agents in Action:**
-   - Agent 1 structures the parties, amount (₹45,000), date, and claims.
-   - Agent 2 identifies violations under the **Consumer Protection Act, 2019** (Deficiency of Service & Unfair Trade Practice).
-   - Agent 3 scores the case merit (~4.5/5) and recommends the District Consumer Disputes Redressal Commission.
-   - Agent 4 generates a formatted **Legal Notice** ready for download in `.docx` format.
-   - Agent 5 provides an easy-to-understand breakdown in your chosen language.
+```json
+{
+  "status": "ok",
+  "version": "4.1.0",
+  "ai_mode": "local_fallback",
+  "auth_required": false
+}
+```
 
----
+## 3.4 Test the full pipeline
+
+1. Open [http://localhost:3000/citizen/home](http://localhost:3000/citizen/home).
+   No login is required in demo mode.
+2. Select a language and state, then paste a scenario such as:
+
+   > I bought a Samsung Smart TV for Rs 45,000 from a dealer in Mumbai on
+   > 15 January 2024 with a one-year warranty. After five days the display
+   > stopped working. The dealer refuses a replacement or refund. I have the
+   > invoice and a video of the defect.
+
+3. The response should show extracted facts, relevant sections, a forum,
+   an action plan, a case-strength assessment and downloadable **DRAFT FOR
+   REVIEW** documents.
+4. Open `/citizen/cases` to see the case saved by the backend. Cases are stored
+   in `backend/nyayai_cases.db`; drafts are in `backend/output_docs/`.
+5. Test uploads with a `.txt`, `.pdf` or `.docx` file. Image OCR needs Sarvam
+   (or Tesseract support); without it the text conversation still works.
+
+The backend also has a command-line smoke test that needs no keys or running
+server:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\smoke_pipeline.py
+```
+
+## 3.5 Enable the AI providers (optional)
+
+Put keys in the root `.env` (or `backend/.env`) and restart the backend:
+
+| Variable | Enables | Without it |
+| :--- | :--- | :--- |
+| `GROQ_API_KEY` | LLM-based intake, strategy and drafting | Deterministic local intake, rules strategy, template drafts |
+| `SARVAM_API_KEY` | Voice transcription and image/document OCR | Text, PDF and DOCX uploads still work locally; `/transcribe` returns 503 |
+| `QDRANT_URL` + `QDRANT_API_KEY` | Vector search over your legal corpus | Curated local legal corpus |
+| `GEMINI_API_KEY` | Gemini strategy engine, when `STRATEGY_ENGINE=gemini` | Rules strategy engine |
+
+Useful optional settings:
+
+```env
+STRATEGY_ENGINE=groq
+MAX_UPLOAD_SIZE_MB=20
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+For local Qdrant:
+
+```powershell
+docker compose up -d qdrant
+# .env
+QDRANT_URL=http://localhost:6333
+```
+
+> The bundled local legal corpus is intentionally small. It is suitable for
+> demos and tests, not for production legal research. Verify every section,
+> limitation period and forum before relying on an output.
+
+## 3.6 Enable Supabase login and marketplace (optional)
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Copy the Project URL and anon key into **both**:
+   - root `.env`: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+     `SUPABASE_SERVICE_ROLE_KEY` (and optionally `SUPABASE_JWT_SECRET`)
+   - `frontend/.env.local`: `NEXT_PUBLIC_SUPABASE_URL`,
+     `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Set `NEXT_PUBLIC_DEMO_MODE=false` in `frontend/.env.local`.
+4. For a shared deployment set `AUTH_REQUIRED=true` in `.env`. Keep it `false`
+   only for a single-user local demo.
+5. Restart both servers after changing environment variables.
+
+The frontend expects tables such as `cases`, `lawyer_profiles`, `user_roles`,
+`case_pipeline` and `notifications`, with Supabase Row Level Security enabled.
+If those tables/policies are not present in your project, login can succeed but
+the cloud dashboard and marketplace will be empty. The zero-setup local demo
+does not use them.
+
+## 3.7 Common problems
+
+| Symptom | Fix |
+| :--- | :--- |
+| `ModuleNotFoundError: No module named 'agents'` | Run `uvicorn` from the `backend` folder, not the repository root |
+| `Cannot reach legal engine at http://localhost:8000` | Start the backend, or set `NEXT_PUBLIC_BACKEND_URL` correctly in `frontend/.env.local` |
+| `401 Authentication required` | Either set `AUTH_REQUIRED=false` for local use, or configure Supabase and sign in |
+| `503` from `/transcribe` | Set `SARVAM_API_KEY`, or use text input |
+| Voice button does nothing | Browser microphone permission is required, and Sarvam must be configured |
+| Port 8000/3000 already in use | Stop the other process or start with `--port 8001` and update `NEXT_PUBLIC_BACKEND_URL` |
+| PowerShell will not activate `.venv` | Use `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` or call `.\.venv\Scripts\python.exe` directly |
+| `npm ci` peer-dependency error | Use Node 20+; then retry `npm ci` |
 
 # 4. 📂 Project Structure
 
